@@ -1,0 +1,35 @@
+import { supabase } from "@/integrations/supabase/client";
+import type { Tables } from "@/integrations/supabase/types";
+
+export type Profile = Tables<"profiles">;
+export type Availability = Tables<"daily_availability">;
+export type Message = Tables<"messages">;
+export type Review = Tables<"reviews">;
+
+/** Local YYYY-MM-DD for "today" (availability resets at local midnight). */
+export function todayStr(): string {
+  const d = new Date();
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
+}
+
+/** Stable conversation key for a pair of users. */
+export function conversationKey(a: string, b: string): string {
+  return [a, b].sort().join("__");
+}
+
+export async function uploadAvatar(userId: string, file: File): Promise<string | null> {
+  const ext = (file.name.split(".").pop() || "jpg").toLowerCase();
+  const path = `${userId}/avatar-${Date.now()}.${ext}`;
+  const { error } = await supabase.storage.from("avatars").upload(path, file, {
+    upsert: true,
+    contentType: file.type || "image/jpeg",
+  });
+  if (error) throw error;
+  const { data } = await supabase.storage
+    .from("avatars")
+    .createSignedUrl(path, 60 * 60 * 24 * 365);
+  return data?.signedUrl ?? null;
+}
