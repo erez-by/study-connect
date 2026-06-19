@@ -97,6 +97,7 @@ export type Database = {
       }
       profiles: {
         Row: {
+          accepted_terms_at: string | null
           avatar_url: string | null
           average_rating: number
           bio: string | null
@@ -113,6 +114,7 @@ export type Database = {
           year_of_study: number | null
         }
         Insert: {
+          accepted_terms_at?: string | null
           avatar_url?: string | null
           average_rating?: number
           bio?: string | null
@@ -129,6 +131,7 @@ export type Database = {
           year_of_study?: number | null
         }
         Update: {
+          accepted_terms_at?: string | null
           avatar_url?: string | null
           average_rating?: number
           bio?: string | null
