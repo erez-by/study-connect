@@ -188,6 +188,8 @@ function AuthPage() {
                     className="pl-9"
                     required
                   />
+                </div>
+                <p className="text-xs text-muted-foreground">Only {BGU_DOMAIN} emails are allowed.</p>
               </div>
               <div className="flex items-start gap-2.5">
                 <Checkbox
