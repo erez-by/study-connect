@@ -1,4 +1,4 @@
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { useEffect, useState } from "react";
 import { GraduationCap, Mail, ArrowLeft, ShieldCheck, Loader2 } from "lucide-react";
@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card } from "@/components/ui/card";
+import { Checkbox } from "@/components/ui/checkbox";
 import { PinPad } from "@/components/PinPad";
 import { BGU_DOMAIN, isValidBguEmail } from "@/lib/constants";
 import { getPinStatus, setPin, verifyPin } from "@/lib/pin.functions";
@@ -36,6 +37,7 @@ function AuthPage() {
   const [pin, setPinState] = useState("");
   const [confirmPin, setConfirmPin] = useState("");
   const [busy, setBusy] = useState(false);
+  const [agreedToTerms, setAgreedToTerms] = useState(false);
 
   async function routeOnward() {
     const { data: session } = await supabase.auth.getSession();
@@ -78,6 +80,10 @@ function AuthPage() {
     e.preventDefault();
     if (!isValidBguEmail(email)) {
       toast.error(`Please use your university email ending in ${BGU_DOMAIN}`);
+      return;
+    }
+    if (!agreedToTerms) {
+      toast.error("Please accept the Terms of Service to continue");
       return;
     }
     setSending(true);
