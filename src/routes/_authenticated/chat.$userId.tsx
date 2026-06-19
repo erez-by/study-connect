@@ -281,7 +281,8 @@ function ChatThread() {
           <DialogHeader>
             <DialogTitle>Report {other.data?.first_name ?? "user"}</DialogTitle>
             <DialogDescription>
-              Tell us what happened. Reports are reviewed to keep Study Buddy safe.
+              Tell us what happened. Reports are reviewed by the Study Buddy team to keep the
+              community safe, and serious cases may be reported to university authorities.
             </DialogDescription>
           </DialogHeader>
           <Textarea

@@ -117,6 +117,7 @@ function Onboarding() {
         avatar_url: avatarUrl,
         email: user.email,
         profile_completed: true,
+        accepted_terms_at: new Date().toISOString(),
       })
       .eq("id", user.id);
     setSaving(false);
