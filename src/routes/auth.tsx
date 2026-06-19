@@ -188,10 +188,28 @@ function AuthPage() {
                     className="pl-9"
                     required
                   />
-                </div>
-                <p className="text-xs text-muted-foreground">Only {BGU_DOMAIN} emails are allowed.</p>
               </div>
-              <Button type="submit" className="w-full" disabled={sending}>
+              <div className="flex items-start gap-2.5">
+                <Checkbox
+                  id="terms"
+                  checked={agreedToTerms}
+                  onCheckedChange={(checked) => setAgreedToTerms(checked === true)}
+                  className="mt-0.5"
+                />
+                <Label htmlFor="terms" className="text-xs font-normal leading-relaxed text-muted-foreground">
+                  I agree to the{" "}
+                  <Link
+                    to="/terms"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="font-medium text-primary underline underline-offset-2"
+                  >
+                    Terms of Service
+                  </Link>
+                  , including the reports &amp; safety policy.
+                </Label>
+              </div>
+              <Button type="submit" className="w-full" disabled={sending || !agreedToTerms}>
                 {sending ? <Loader2 className="h-4 w-4 animate-spin" /> : "Send magic link"}
               </Button>
               <p className="text-center text-xs text-muted-foreground">
