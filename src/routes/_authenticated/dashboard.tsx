@@ -69,13 +69,13 @@ function Dashboard() {
   });
 
   const students = useQuery({
-    queryKey: ["available", today],
+    queryKey: ["available", viewDate],
     enabled: !!userId,
     queryFn: async (): Promise<AvailableStudent[]> => {
       const { data: avails } = await supabase
         .from("daily_availability")
         .select("*")
-        .eq("date", today);
+        .eq("date", viewDate);
       if (!avails?.length) return [];
       const ids = [...new Set(avails.map((a) => a.user_id))];
       const { data: profs } = await supabase
@@ -90,16 +90,17 @@ function Dashboard() {
     },
   });
 
-  // First availability prompt of the day.
+  // First availability prompt of the day (only for today's view).
   useEffect(() => {
+    if (dayIndex !== 0) return;
     if (myAvailability.isSuccess && myAvailability.data === null) {
-      const key = `sb_planner_prompted_${today}`;
+      const key = `sb_planner_prompted_${viewDate}`;
       if (sessionStorage.getItem(key) !== "true") {
         sessionStorage.setItem(key, "true");
         setPlannerOpen(true);
       }
     }
-  }, [myAvailability.isSuccess, myAvailability.data, today]);
+  }, [myAvailability.isSuccess, myAvailability.data, viewDate, dayIndex]);
 
   // Rating prompt: chatted >1h ago today, before 20:00, not yet reviewed.
   useEffect(() => {
