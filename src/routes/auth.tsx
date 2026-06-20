@@ -47,6 +47,7 @@ function AuthPage() {
   const [loginPin, setLoginPin] = useState("");
   const [busy, setBusy] = useState(false);
   const [agreedToTerms, setAgreedToTerms] = useState(false);
+  const [marketingOptIn, setMarketingOptIn] = useState(false);
 
   async function routeOnward() {
     const { data: session } = await supabase.auth.getSession();
