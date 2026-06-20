@@ -130,7 +130,16 @@ function Dashboard() {
         .in("reviewed_user_id", ids);
       const reviewedSet = new Set((reviewed ?? []).map((r) => r.reviewed_user_id));
       const dismissed = new Set(JSON.parse(sessionStorage.getItem("sb_rating_dismissed") || "[]"));
-      const pick = ids.find((id) => !reviewedSet.has(id) && !dismissed.has(id));
+      const eligible = ids.filter((id) => !reviewedSet.has(id) && !dismissed.has(id));
+      // Only prompt to rate partners with whom the meetup is mutually confirmed.
+      let pick: string | undefined;
+      for (const id of eligible) {
+        const { mutual } = await getMeetupState(userId, id);
+        if (mutual) {
+          pick = id;
+          break;
+        }
+      }
       if (!pick) return;
       const { data: prof } = await supabase
         .from("profiles")
