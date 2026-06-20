@@ -138,9 +138,7 @@ export function AvailabilityPlanner({ open, onOpenChange, userId, initialDate, o
       return;
     }
     queryClient.invalidateQueries();
-    toast.success(
-      day === "today" ? "Availability posted for today! 🎯" : "Availability posted for tomorrow! 🎯",
-    );
+    toast.success(`Availability posted for ${formatDateLabel(selectedDate)}! 🎯`);
     onSaved?.();
     onOpenChange(false);
   }
