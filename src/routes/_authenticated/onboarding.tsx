@@ -63,26 +63,25 @@ function Onboarding() {
   useEffect(() => {
     // Prefill if a profile already partially exists.
     if (!user) return;
-    supabase
-      .from("profiles")
-      .select("*")
-      .eq("id", user.id)
-      .maybeSingle()
-      .then(({ data }) => {
-        if (!data) return;
-        if (data.profile_completed) {
-          navigate({ to: "/dashboard", replace: true });
-          return;
-        }
-        setFirstName(data.first_name ?? "");
-        setLastName(data.last_name ?? "");
-        setGender(data.gender ?? "");
-        setDegree(data.degree ?? "");
-        setYear(data.year_of_study ? String(data.year_of_study) : "1");
-        setBio(data.bio ?? "");
-        setAvatarUrl(data.avatar_url ?? null);
-        setMarketingOptIn(data.marketing_opt_in ?? false);
-      });
+    (async () => {
+      const [{ data }, { data: priv }] = await Promise.all([
+        supabase.from("profiles").select("*").eq("id", user.id).maybeSingle(),
+        supabase.from("profiles_private").select("*").eq("id", user.id).maybeSingle(),
+      ]);
+      if (!data) return;
+      if (data.profile_completed) {
+        navigate({ to: "/dashboard", replace: true });
+        return;
+      }
+      setFirstName(data.first_name ?? "");
+      setLastName(priv?.last_name ?? "");
+      setGender(priv?.gender ?? "");
+      setDegree(data.degree ?? "");
+      setYear(data.year_of_study ? String(data.year_of_study) : "1");
+      setBio(data.bio ?? "");
+      setAvatarUrl(data.avatar_url ?? null);
+      setMarketingOptIn(priv?.marketing_opt_in ?? false);
+    })();
   }, [user, navigate]);
 
   async function handlePickFile(e: React.ChangeEvent<HTMLInputElement>) {
