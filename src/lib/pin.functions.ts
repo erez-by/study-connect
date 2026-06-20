@@ -69,7 +69,7 @@ export const loginWithPin = createServerFn({ method: "POST" })
 
     // Find the account by email.
     const { data: profile } = await supabaseAdmin
-      .from("profiles")
+      .from("profiles_private")
       .select("id")
       .eq("email", email)
       .maybeSingle();

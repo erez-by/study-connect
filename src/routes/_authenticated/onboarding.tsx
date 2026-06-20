@@ -63,26 +63,25 @@ function Onboarding() {
   useEffect(() => {
     // Prefill if a profile already partially exists.
     if (!user) return;
-    supabase
-      .from("profiles")
-      .select("*")
-      .eq("id", user.id)
-      .maybeSingle()
-      .then(({ data }) => {
-        if (!data) return;
-        if (data.profile_completed) {
-          navigate({ to: "/dashboard", replace: true });
-          return;
-        }
-        setFirstName(data.first_name ?? "");
-        setLastName(data.last_name ?? "");
-        setGender(data.gender ?? "");
-        setDegree(data.degree ?? "");
-        setYear(data.year_of_study ? String(data.year_of_study) : "1");
-        setBio(data.bio ?? "");
-        setAvatarUrl(data.avatar_url ?? null);
-        setMarketingOptIn(data.marketing_opt_in ?? false);
-      });
+    (async () => {
+      const [{ data }, { data: priv }] = await Promise.all([
+        supabase.from("profiles").select("*").eq("id", user.id).maybeSingle(),
+        supabase.from("profiles_private").select("*").eq("id", user.id).maybeSingle(),
+      ]);
+      if (!data) return;
+      if (data.profile_completed) {
+        navigate({ to: "/dashboard", replace: true });
+        return;
+      }
+      setFirstName(data.first_name ?? "");
+      setLastName(priv?.last_name ?? "");
+      setGender(priv?.gender ?? "");
+      setDegree(data.degree ?? "");
+      setYear(data.year_of_study ? String(data.year_of_study) : "1");
+      setBio(data.bio ?? "");
+      setAvatarUrl(data.avatar_url ?? null);
+      setMarketingOptIn(priv?.marketing_opt_in ?? false);
+    })();
   }, [user, navigate]);
 
   async function handlePickFile(e: React.ChangeEvent<HTMLInputElement>) {
@@ -143,22 +142,30 @@ function Onboarding() {
       .from("profiles")
       .update({
         first_name: data.first_name,
-        last_name: data.last_name,
         last_initial: lastInitial,
-        gender: data.gender,
         degree: data.degree,
         year_of_study: data.year_of_study,
         bio: data.bio,
         avatar_url: avatarUrl,
-        email: user.email,
-        marketing_opt_in: marketingOptIn,
         profile_completed: true,
-        accepted_terms_at: new Date().toISOString(),
       })
       .eq("id", user.id);
+
+    let privateError = error;
+    if (!privateError) {
+      const res = await supabase.from("profiles_private").upsert({
+        id: user.id,
+        last_name: data.last_name,
+        gender: data.gender,
+        email: user.email,
+        marketing_opt_in: marketingOptIn,
+        accepted_terms_at: new Date().toISOString(),
+      });
+      privateError = res.error;
+    }
     setSaving(false);
-    if (error) {
-      toast.error(error.message);
+    if (privateError) {
+      toast.error(privateError.message);
       return;
     }
     queryClient.invalidateQueries();
