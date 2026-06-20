@@ -13,11 +13,7 @@ export function AppHeader() {
   async function handleSignOut() {
     await queryClient.cancelQueries();
     queryClient.clear();
-    try {
-      sessionStorage.removeItem("sb_unlocked");
-    } catch {
-      // ignore
-    }
+    clearUnlocked();
     await supabase.auth.signOut();
     navigate({ to: "/auth", replace: true });
   }
