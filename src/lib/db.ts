@@ -34,6 +34,31 @@ export function formatDateLabel(iso: string): string {
   });
 }
 
+export type DayOption = {
+  iso: string;
+  /** Short label, e.g. "Mon 23". */
+  short: string;
+  /** Full weekday, e.g. "Monday". */
+  weekday: string;
+  isToday: boolean;
+};
+
+/** The next `count` days starting today, for per-day availability planning. */
+export function upcomingDays(count = 7): DayOption[] {
+  const base = new Date();
+  base.setHours(0, 0, 0, 0);
+  return Array.from({ length: count }, (_, i) => {
+    const d = new Date(base);
+    d.setDate(base.getDate() + i);
+    return {
+      iso: dateStr(d),
+      short: d.toLocaleDateString(undefined, { weekday: "short", day: "numeric" }),
+      weekday: d.toLocaleDateString(undefined, { weekday: "long" }),
+      isToday: i === 0,
+    };
+  });
+}
+
 /** Stable conversation key for a pair of users. */
 export function conversationKey(a: string, b: string): string {
   return [a, b].sort().join("__");
