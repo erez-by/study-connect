@@ -46,7 +46,13 @@ import {
   DialogDescription,
   DialogFooter,
 } from "@/components/ui/dialog";
+import { RatingDialog } from "@/components/RatingDialog";
+import { getMeetupState, confirmMeetup } from "@/lib/meetup";
+import { getStudyTip } from "@/lib/constants";
 import { cn } from "@/lib/utils";
+
+/** After this many messages in the thread, inject a friendly study tip. */
+const TIP_EVERY = 6;
 
 export const Route = createFileRoute("/_authenticated/chat/$userId")({
   component: ChatThread,
