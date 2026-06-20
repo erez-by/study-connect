@@ -63,8 +63,8 @@ export function AvailabilityPlanner({ open, onOpenChange, userId, initialDate, o
   useEffect(() => {
     if (!open) return;
     setStep(1);
-    setDay(initialDay);
-  }, [open, initialDay]);
+    setSelectedDate(initialDate ?? todayStr());
+  }, [open, initialDate]);
 
   // Sync form fields whenever the loaded availability (per day) changes.
   useEffect(() => {
