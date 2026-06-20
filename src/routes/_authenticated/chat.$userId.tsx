@@ -112,9 +112,30 @@ function ChatThread() {
     },
   });
 
+  const meetup = useQuery({
+    queryKey: ["meetup", me, otherId],
+    enabled: !!me,
+    refetchInterval: 8000,
+    queryFn: () => getMeetupState(me!, otherId),
+  });
+
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages.data?.length]);
+
+  async function handleConfirmMeetup() {
+    if (!me) return;
+    setConfirming(true);
+    try {
+      await confirmMeetup(me, otherId);
+      toast.success("Meetup confirmed! 🤝");
+      meetup.refetch();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Could not confirm meetup");
+    } finally {
+      setConfirming(false);
+    }
+  }
 
   async function send(e: React.FormEvent) {
     e.preventDefault();
