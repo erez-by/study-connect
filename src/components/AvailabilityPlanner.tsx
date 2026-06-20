@@ -162,22 +162,28 @@ export function AvailabilityPlanner({ open, onOpenChange, userId, initialDate, o
           <div className="space-y-4 px-5 py-4">
             {step === 1 && (
               <>
-                <div className="grid grid-cols-2 gap-1 rounded-xl bg-secondary p-1" role="group" aria-label="Pick a day">
-                  {(["today", "tomorrow"] as DayKey[]).map((d) => (
-                    <button
-                      key={d}
-                      type="button"
-                      aria-pressed={day === d}
-                      onClick={() => setDay(d)}
-                      className={cn(
-                        "rounded-lg px-3 py-2 text-sm font-semibold capitalize transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
-                        day === d ? "bg-card text-foreground shadow-sm" : "text-muted-foreground",
-                      )}
-                    >
-                      {d}
-                    </button>
-                  ))}
+                <div className="flex gap-1.5 overflow-x-auto pb-1" role="group" aria-label="Pick a day">
+                  {DAYS.map((d) => {
+                    const active = selectedDate === d.iso;
+                    return (
+                      <button
+                        key={d.iso}
+                        type="button"
+                        aria-pressed={active}
+                        onClick={() => setSelectedDate(d.iso)}
+                        className={cn(
+                          "flex shrink-0 flex-col items-center rounded-xl border-2 px-3 py-2 text-sm font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+                          active
+                            ? "border-primary bg-secondary text-foreground"
+                            : "border-border text-muted-foreground hover:border-primary/40",
+                        )}
+                      >
+                        <span className="leading-tight">{d.isToday ? "Today" : d.short}</span>
+                      </button>
+                    );
+                  })}
                 </div>
+
 
                 <div className="select-none rounded-xl border border-border p-1.5" style={{ touchAction: "none" }}>
                   {HOUR_BLOCKS.map((block) => {
