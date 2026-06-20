@@ -3,6 +3,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { GraduationCap, MessageCircle, LogOut, LayoutGrid } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
+import { clearUnlocked } from "@/lib/unlock";
 import { cn } from "@/lib/utils";
 
 export function AppHeader() {
