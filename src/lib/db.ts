@@ -7,12 +7,31 @@ export type Message = Tables<"messages">;
 export type Review = Tables<"reviews">;
 
 /** Local YYYY-MM-DD for "today" (availability resets at local midnight). */
-export function todayStr(): string {
-  const d = new Date();
+export function dateStr(d: Date): string {
   const y = d.getFullYear();
   const m = String(d.getMonth() + 1).padStart(2, "0");
   const day = String(d.getDate()).padStart(2, "0");
   return `${y}-${m}-${day}`;
+}
+
+export function todayStr(): string {
+  return dateStr(new Date());
+}
+
+export function tomorrowStr(): string {
+  const d = new Date();
+  d.setDate(d.getDate() + 1);
+  return dateStr(d);
+}
+
+/** Human-friendly label for a date string ("Mon, Jun 23"). */
+export function formatDateLabel(iso: string): string {
+  const [y, m, day] = iso.split("-").map(Number);
+  return new Date(y, m - 1, day).toLocaleDateString(undefined, {
+    weekday: "short",
+    month: "short",
+    day: "numeric",
+  });
 }
 
 /** Stable conversation key for a pair of users. */
