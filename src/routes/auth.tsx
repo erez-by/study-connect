@@ -13,7 +13,10 @@ import { PinPad } from "@/components/PinPad";
 import { LegalFooter } from "@/components/LegalFooter";
 import { BGU_DOMAIN, isValidBguEmail } from "@/lib/constants";
 import { getPinStatus, setPin, verifyPin, loginWithPin } from "@/lib/pin.functions";
+import { setUnlocked, isUnlocked, clearUnlocked } from "@/lib/unlock";
 import { cn } from "@/lib/utils";
+
+const MARKETING_KEY = "sb_marketing_opt_in";
 
 export const Route = createFileRoute("/auth")({
   head: () => ({
@@ -44,6 +47,7 @@ function AuthPage() {
   const [loginPin, setLoginPin] = useState("");
   const [busy, setBusy] = useState(false);
   const [agreedToTerms, setAgreedToTerms] = useState(false);
+  const [marketingOptIn, setMarketingOptIn] = useState(false);
 
   async function routeOnward() {
     const { data: session } = await supabase.auth.getSession();
@@ -72,8 +76,7 @@ function AuthPage() {
         setStep("pin-setup");
         return;
       }
-      const unlocked = sessionStorage.getItem("sb_unlocked") === "true";
-      if (unlocked) {
+      if (isUnlocked()) {
         await routeOnward();
         return;
       }
@@ -93,6 +96,12 @@ function AuthPage() {
       return;
     }
     setSending(true);
+    // Remember the marketing choice so it can be saved once the account exists.
+    try {
+      localStorage.setItem(MARKETING_KEY, marketingOptIn ? "true" : "false");
+    } catch {
+      // ignore
+    }
     const { error } = await supabase.auth.signInWithOtp({
       email: email.trim().toLowerCase(),
       options: { emailRedirectTo: `${window.location.origin}/auth` },
@@ -150,7 +159,7 @@ function AuthPage() {
         setLoginPin("");
         return;
       }
-      sessionStorage.setItem("sb_unlocked", "true");
+      setUnlocked();
       toast.success("Welcome back! 🎉");
       await routeOnward();
     } catch {
@@ -171,7 +180,24 @@ function AuthPage() {
     setBusy(true);
     try {
       await savePin({ data: { pin } });
-      sessionStorage.setItem("sb_unlocked", "true");
+      // Sync the marketing choice made at sign-up to the user's profile.
+      try {
+        const choice = localStorage.getItem(MARKETING_KEY);
+        if (choice !== null) {
+          const { data: session } = await supabase.auth.getSession();
+          const uid = session.session?.user.id;
+          if (uid) {
+            await supabase
+              .from("profiles")
+              .update({ marketing_opt_in: choice === "true" })
+              .eq("id", uid);
+          }
+          localStorage.removeItem(MARKETING_KEY);
+        }
+      } catch {
+        // non-blocking — opt-in can also be changed later in onboarding
+      }
+      setUnlocked();
       toast.success("PIN set! You're all set.");
       await routeOnward();
     } catch {
@@ -186,7 +212,7 @@ function AuthPage() {
     try {
       const res = await checkPinValue({ data: { pin: value } });
       if (res.valid) {
-        sessionStorage.setItem("sb_unlocked", "true");
+        setUnlocked();
         await routeOnward();
       } else {
         toast.error("Incorrect PIN");
@@ -202,7 +228,7 @@ function AuthPage() {
 
   async function handleUseDifferentEmail() {
     await supabase.auth.signOut();
-    sessionStorage.removeItem("sb_unlocked");
+    clearUnlocked();
     setPinState("");
     setConfirmPin("");
     setStep("form");
@@ -348,6 +374,21 @@ function AuthPage() {
                         Terms of Service
                       </Link>
                       , including the reports &amp; safety policy.
+                    </Label>
+                  </div>
+                  <div className="flex items-start gap-2.5">
+                    <Checkbox
+                      id="marketing"
+                      checked={marketingOptIn}
+                      onCheckedChange={(checked) => setMarketingOptIn(checked === true)}
+                      className="mt-0.5"
+                    />
+                    <Label
+                      htmlFor="marketing"
+                      className="text-xs font-normal leading-relaxed text-muted-foreground"
+                    >
+                      I'd like to receive occasional updates and tips by email (optional). You can
+                      unsubscribe anytime.
                     </Label>
                   </div>
                   <Button type="submit" className="w-full" disabled={sending || !agreedToTerms}>
