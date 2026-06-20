@@ -232,7 +232,51 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      public_profiles: {
+        Row: {
+          avatar_url: string | null
+          average_rating: number | null
+          bio: string | null
+          created_at: string | null
+          degree: string | null
+          first_name: string | null
+          id: string | null
+          last_initial: string | null
+          profile_completed: boolean | null
+          total_reviews: number | null
+          updated_at: string | null
+          year_of_study: number | null
+        }
+        Insert: {
+          avatar_url?: string | null
+          average_rating?: number | null
+          bio?: string | null
+          created_at?: string | null
+          degree?: string | null
+          first_name?: string | null
+          id?: string | null
+          last_initial?: string | null
+          profile_completed?: boolean | null
+          total_reviews?: number | null
+          updated_at?: string | null
+          year_of_study?: number | null
+        }
+        Update: {
+          avatar_url?: string | null
+          average_rating?: number | null
+          bio?: string | null
+          created_at?: string | null
+          degree?: string | null
+          first_name?: string | null
+          id?: string | null
+          last_initial?: string | null
+          profile_completed?: boolean | null
+          total_reviews?: number | null
+          updated_at?: string | null
+          year_of_study?: number | null
+        }
+        Relationships: []
+      }
     }
     Functions: {
       [_ in never]: never
