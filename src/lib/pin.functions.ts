@@ -9,6 +9,14 @@ function hashPin(userId: string, pin: string): string {
 
 const pinSchema = z.object({ pin: z.string().regex(/^\d{4}$/, "PIN must be 4 digits") });
 
+const loginSchema = z.object({
+  email: z.string().trim().toLowerCase().email("Enter a valid email"),
+  pin: z.string().regex(/^\d{4}$/, "PIN must be 4 digits"),
+});
+
+const MAX_ATTEMPTS = 5;
+const LOCK_MINUTES = 15;
+
 export const getPinStatus = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
