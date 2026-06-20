@@ -97,61 +97,79 @@ export type Database = {
       }
       profiles: {
         Row: {
-          accepted_terms_at: string | null
           avatar_url: string | null
           average_rating: number
           bio: string | null
           created_at: string
           degree: string | null
-          email: string | null
           first_name: string | null
-          gender: string | null
           id: string
           last_initial: string | null
-          last_name: string | null
-          marketing_opt_in: boolean
           profile_completed: boolean
           total_reviews: number
           updated_at: string
           year_of_study: number | null
         }
         Insert: {
-          accepted_terms_at?: string | null
           avatar_url?: string | null
           average_rating?: number
           bio?: string | null
           created_at?: string
           degree?: string | null
-          email?: string | null
           first_name?: string | null
-          gender?: string | null
           id: string
           last_initial?: string | null
-          last_name?: string | null
-          marketing_opt_in?: boolean
           profile_completed?: boolean
           total_reviews?: number
           updated_at?: string
           year_of_study?: number | null
         }
         Update: {
-          accepted_terms_at?: string | null
           avatar_url?: string | null
           average_rating?: number
           bio?: string | null
           created_at?: string
           degree?: string | null
-          email?: string | null
           first_name?: string | null
-          gender?: string | null
           id?: string
           last_initial?: string | null
-          last_name?: string | null
-          marketing_opt_in?: boolean
           profile_completed?: boolean
           total_reviews?: number
           updated_at?: string
           year_of_study?: number | null
+        }
+        Relationships: []
+      }
+      profiles_private: {
+        Row: {
+          accepted_terms_at: string | null
+          created_at: string
+          email: string | null
+          gender: string | null
+          id: string
+          last_name: string | null
+          marketing_opt_in: boolean
+          updated_at: string
+        }
+        Insert: {
+          accepted_terms_at?: string | null
+          created_at?: string
+          email?: string | null
+          gender?: string | null
+          id: string
+          last_name?: string | null
+          marketing_opt_in?: boolean
+          updated_at?: string
+        }
+        Update: {
+          accepted_terms_at?: string | null
+          created_at?: string
+          email?: string | null
+          gender?: string | null
+          id?: string
+          last_name?: string | null
+          marketing_opt_in?: boolean
+          updated_at?: string
         }
         Relationships: []
       }
@@ -232,51 +250,7 @@ export type Database = {
       }
     }
     Views: {
-      public_profiles: {
-        Row: {
-          avatar_url: string | null
-          average_rating: number | null
-          bio: string | null
-          created_at: string | null
-          degree: string | null
-          first_name: string | null
-          id: string | null
-          last_initial: string | null
-          profile_completed: boolean | null
-          total_reviews: number | null
-          updated_at: string | null
-          year_of_study: number | null
-        }
-        Insert: {
-          avatar_url?: string | null
-          average_rating?: number | null
-          bio?: string | null
-          created_at?: string | null
-          degree?: string | null
-          first_name?: string | null
-          id?: string | null
-          last_initial?: string | null
-          profile_completed?: boolean | null
-          total_reviews?: number | null
-          updated_at?: string | null
-          year_of_study?: number | null
-        }
-        Update: {
-          avatar_url?: string | null
-          average_rating?: number | null
-          bio?: string | null
-          created_at?: string | null
-          degree?: string | null
-          first_name?: string | null
-          id?: string | null
-          last_initial?: string | null
-          profile_completed?: boolean | null
-          total_reviews?: number | null
-          updated_at?: string | null
-          year_of_study?: number | null
-        }
-        Relationships: []
-      }
+      [_ in never]: never
     }
     Functions: {
       [_ in never]: never
