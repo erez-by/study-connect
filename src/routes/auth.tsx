@@ -180,7 +180,24 @@ function AuthPage() {
     setBusy(true);
     try {
       await savePin({ data: { pin } });
-      sessionStorage.setItem("sb_unlocked", "true");
+      // Sync the marketing choice made at sign-up to the user's profile.
+      try {
+        const choice = localStorage.getItem(MARKETING_KEY);
+        if (choice !== null) {
+          const { data: session } = await supabase.auth.getSession();
+          const uid = session.session?.user.id;
+          if (uid) {
+            await supabase
+              .from("profiles")
+              .update({ marketing_opt_in: choice === "true" })
+              .eq("id", uid);
+          }
+          localStorage.removeItem(MARKETING_KEY);
+        }
+      } catch {
+        // non-blocking — opt-in can also be changed later in onboarding
+      }
+      setUnlocked();
       toast.success("PIN set! You're all set.");
       await routeOnward();
     } catch {
