@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
-import { useQueryClient } from "@tanstack/react-query";
-import { Check, Loader2, CalendarClock } from "lucide-react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { Check, Loader2, CalendarClock, ArrowLeft, ArrowRight } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import {
@@ -16,19 +16,29 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { HOUR_BLOCKS, STUDY_STYLES, formatHourBlock } from "@/lib/constants";
-import { todayStr, type Availability } from "@/lib/db";
+import { todayStr, tomorrowStr, formatDateLabel, type Availability } from "@/lib/db";
 import { cn } from "@/lib/utils";
 
 type Props = {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   userId: string;
-  existing?: Availability | null;
+  /** Initial day to plan ("today" | "tomorrow"). Defaults to today. */
+  initialDay?: DayKey;
   onSaved?: () => void;
 };
 
-export function AvailabilityPlanner({ open, onOpenChange, userId, existing, onSaved }: Props) {
+type DayKey = "today" | "tomorrow";
+
+const DAY_DATES: Record<DayKey, () => string> = {
+  today: todayStr,
+  tomorrow: tomorrowStr,
+};
+
+export function AvailabilityPlanner({ open, onOpenChange, userId, initialDay = "today", onSaved }: Props) {
   const queryClient = useQueryClient();
+  const [step, setStep] = useState<1 | 2>(1);
+  const [day, setDay] = useState<DayKey>(initialDay);
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [subject, setSubject] = useState("");
   const [style, setStyle] = useState<string>("");
@@ -38,13 +48,40 @@ export function AvailabilityPlanner({ open, onOpenChange, userId, existing, onSa
   const dragging = useRef(false);
   const dragValue = useRef(false);
 
+  const selectedDate = DAY_DATES[day]();
+
+  // Load any existing availability for the selected day.
+  const existingQuery = useQuery({
+    queryKey: ["availability-for", userId, selectedDate],
+    enabled: open && !!userId,
+    queryFn: async (): Promise<Availability | null> => {
+      const { data } = await supabase
+        .from("daily_availability")
+        .select("*")
+        .eq("user_id", userId)
+        .eq("date", selectedDate)
+        .maybeSingle();
+      return data;
+    },
+  });
+
+  // When opening, reset to step 1 on the initial day.
   useEffect(() => {
     if (!open) return;
+    setStep(1);
+    setDay(initialDay);
+  }, [open, initialDay]);
+
+  // Sync form fields whenever the loaded availability (per day) changes.
+  useEffect(() => {
+    if (!open) return;
+    const existing = existingQuery.data;
     setSelected(new Set(existing?.available_hours ?? []));
     setSubject(existing?.subject ?? "");
     setStyle(existing?.study_style ?? "");
     setNote(existing?.optional_note ?? "");
-  }, [open, existing]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [existingQuery.data, selectedDate, open]);
 
   function applyBlock(block: string, value: boolean) {
     setSelected((prev) => {
@@ -70,9 +107,18 @@ export function AvailabilityPlanner({ open, onOpenChange, userId, existing, onSa
     return () => window.removeEventListener("pointerup", stop);
   }, []);
 
+  function goNext() {
+    if (selected.size === 0) {
+      toast.error("Select at least one free hour");
+      return;
+    }
+    setStep(2);
+  }
+
   async function handleSave() {
     if (selected.size === 0) {
       toast.error("Select at least one free hour");
+      setStep(1);
       return;
     }
     if (!style) {
@@ -84,7 +130,7 @@ export function AvailabilityPlanner({ open, onOpenChange, userId, existing, onSa
     const { error } = await supabase.from("daily_availability").upsert(
       {
         user_id: userId,
-        date: todayStr(),
+        date: selectedDate,
         available_hours: hours,
         subject: subject.trim() || null,
         study_style: style,
@@ -98,7 +144,9 @@ export function AvailabilityPlanner({ open, onOpenChange, userId, existing, onSa
       return;
     }
     queryClient.invalidateQueries();
-    toast.success("Availability posted for today! 🎯");
+    toast.success(
+      day === "today" ? "Availability posted for today! 🎯" : "Availability posted for tomorrow! 🎯",
+    );
     onSaved?.();
     onOpenChange(false);
   }
@@ -108,89 +156,132 @@ export function AvailabilityPlanner({ open, onOpenChange, userId, existing, onSa
       <DialogContent className="max-h-[92vh] gap-0 overflow-hidden p-0 sm:max-w-md">
         <DialogHeader className="border-b border-border px-5 py-4 text-left">
           <DialogTitle className="flex items-center gap-2 font-display">
-            <CalendarClock className="h-5 w-5 text-primary" /> Today's availability
+            <CalendarClock className="h-5 w-5 text-primary" />
+            {step === 1 ? "Pick your free hours" : "Study details"}
           </DialogTitle>
-          <DialogDescription>Tap or drag to mark the hours you're free to study.</DialogDescription>
+          <DialogDescription>
+            {step === 1
+              ? "Choose a day, then tap or drag the hours you're free."
+              : `For ${formatDateLabel(selectedDate)} — how do you like to study?`}
+          </DialogDescription>
         </DialogHeader>
 
         <ScrollArea className="max-h-[55vh]">
           <div className="space-y-4 px-5 py-4">
-            <div className="select-none rounded-xl border border-border p-1.5" style={{ touchAction: "none" }}>
-              {HOUR_BLOCKS.map((block) => {
-                const active = selected.has(block);
-                return (
-                  <button
-                    key={block}
-                    type="button"
-                    onPointerDown={() => onPointerDown(block)}
-                    onPointerEnter={() => onPointerEnter(block)}
-                    className={cn(
-                      "flex w-full items-center justify-between rounded-lg px-3 py-2.5 text-sm font-medium transition-colors",
-                      active ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-secondary",
-                    )}
-                  >
-                    <span>{formatHourBlock(block)}</span>
-                    {active && <Check className="h-4 w-4" />}
-                  </button>
-                );
-              })}
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="subject">Subject / course (optional)</Label>
-              <Input
-                id="subject"
-                value={subject}
-                onChange={(e) => setSubject(e.target.value)}
-                placeholder="e.g. Calculus 2, Intro to CS"
-                maxLength={60}
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label>Study style</Label>
-              <div className="grid grid-cols-2 gap-2">
-                {STUDY_STYLES.map((s) => {
-                  const Icon = s.icon;
-                  const active = style === s.id;
-                  return (
+            {step === 1 && (
+              <>
+                <div className="grid grid-cols-2 gap-1 rounded-xl bg-secondary p-1" role="group" aria-label="Pick a day">
+                  {(["today", "tomorrow"] as DayKey[]).map((d) => (
                     <button
-                      key={s.id}
+                      key={d}
                       type="button"
-                      onClick={() => setStyle(s.id)}
+                      aria-pressed={day === d}
+                      onClick={() => setDay(d)}
                       className={cn(
-                        "flex items-center gap-2 rounded-xl border-2 px-3 py-2.5 text-left text-sm font-medium transition-colors",
-                        active
-                          ? "border-primary bg-secondary text-foreground"
-                          : "border-border text-muted-foreground hover:border-primary/40",
+                        "rounded-lg px-3 py-2 text-sm font-semibold capitalize transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+                        day === d ? "bg-card text-foreground shadow-sm" : "text-muted-foreground",
                       )}
                     >
-                      <Icon className={cn("h-4 w-4 shrink-0", active ? "text-primary" : "")} />
-                      <span className="leading-tight">{s.label}</span>
+                      {d}
                     </button>
-                  );
-                })}
-              </div>
-            </div>
+                  ))}
+                </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="note">Note (optional)</Label>
-              <Textarea
-                id="note"
-                value={note}
-                onChange={(e) => setNote(e.target.value)}
-                placeholder="e.g. Prefer the Aranne library, ground floor"
-                maxLength={140}
-                rows={2}
-              />
-            </div>
+                <div className="select-none rounded-xl border border-border p-1.5" style={{ touchAction: "none" }}>
+                  {HOUR_BLOCKS.map((block) => {
+                    const active = selected.has(block);
+                    return (
+                      <button
+                        key={block}
+                        type="button"
+                        aria-pressed={active}
+                        onPointerDown={() => onPointerDown(block)}
+                        onPointerEnter={() => onPointerEnter(block)}
+                        className={cn(
+                          "flex w-full items-center justify-between rounded-lg px-3 py-2.5 text-sm font-medium transition-colors",
+                          active ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-secondary",
+                        )}
+                      >
+                        <span>{formatHourBlock(block)}</span>
+                        {active && <Check className="h-4 w-4" />}
+                      </button>
+                    );
+                  })}
+                </div>
+              </>
+            )}
+
+            {step === 2 && (
+              <>
+                <div className="space-y-2">
+                  <Label htmlFor="subject">Subject / course (optional)</Label>
+                  <Input
+                    id="subject"
+                    value={subject}
+                    onChange={(e) => setSubject(e.target.value)}
+                    placeholder="e.g. Calculus 2, Intro to CS"
+                    maxLength={60}
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label>Study style</Label>
+                  <div className="grid grid-cols-2 gap-2">
+                    {STUDY_STYLES.map((s) => {
+                      const Icon = s.icon;
+                      const active = style === s.id;
+                      return (
+                        <button
+                          key={s.id}
+                          type="button"
+                          aria-pressed={active}
+                          onClick={() => setStyle(s.id)}
+                          className={cn(
+                            "flex items-center gap-2 rounded-xl border-2 px-3 py-2.5 text-left text-sm font-medium transition-colors",
+                            active
+                              ? "border-primary bg-secondary text-foreground"
+                              : "border-border text-muted-foreground hover:border-primary/40",
+                          )}
+                        >
+                          <Icon className={cn("h-4 w-4 shrink-0", active ? "text-primary" : "")} />
+                          <span className="leading-tight">{s.label}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="note">Note (optional)</Label>
+                  <Textarea
+                    id="note"
+                    value={note}
+                    onChange={(e) => setNote(e.target.value)}
+                    placeholder="e.g. Prefer the Aranne library, ground floor"
+                    maxLength={140}
+                    rows={2}
+                  />
+                </div>
+              </>
+            )}
           </div>
         </ScrollArea>
 
-        <div className="border-t border-border px-5 py-4">
-          <Button onClick={handleSave} className="w-full" size="lg" disabled={saving}>
-            {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : "Post my availability"}
-          </Button>
+        <div className="flex items-center gap-2 border-t border-border px-5 py-4">
+          {step === 1 ? (
+            <Button onClick={goNext} className="w-full gap-2" size="lg">
+              Next <ArrowRight className="h-4 w-4" />
+            </Button>
+          ) : (
+            <>
+              <Button variant="outline" size="lg" className="gap-2" onClick={() => setStep(1)} disabled={saving}>
+                <ArrowLeft className="h-4 w-4" /> Back
+              </Button>
+              <Button onClick={handleSave} className="flex-1" size="lg" disabled={saving}>
+                {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : "Post my availability"}
+              </Button>
+            </>
+          )}
         </div>
       </DialogContent>
     </Dialog>

@@ -10,8 +10,10 @@ import { Label } from "@/components/ui/label";
 import { Card } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import { PinPad } from "@/components/PinPad";
+import { LegalFooter } from "@/components/LegalFooter";
 import { BGU_DOMAIN, isValidBguEmail } from "@/lib/constants";
-import { getPinStatus, setPin, verifyPin } from "@/lib/pin.functions";
+import { getPinStatus, setPin, verifyPin, loginWithPin } from "@/lib/pin.functions";
+import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/auth")({
   head: () => ({
@@ -23,19 +25,23 @@ export const Route = createFileRoute("/auth")({
   component: AuthPage,
 });
 
-type Step = "loading" | "email" | "sent" | "pin-setup" | "pin-unlock";
+type Mode = "login" | "signup";
+type Step = "loading" | "form" | "sent" | "pin-setup" | "pin-unlock";
 
 function AuthPage() {
   const navigate = useNavigate();
   const checkPin = useServerFn(getPinStatus);
   const savePin = useServerFn(setPin);
   const checkPinValue = useServerFn(verifyPin);
+  const doLogin = useServerFn(loginWithPin);
 
   const [step, setStep] = useState<Step>("loading");
+  const [mode, setMode] = useState<Mode>("login");
   const [email, setEmail] = useState("");
   const [sending, setSending] = useState(false);
   const [pin, setPinState] = useState("");
   const [confirmPin, setConfirmPin] = useState("");
+  const [loginPin, setLoginPin] = useState("");
   const [busy, setBusy] = useState(false);
   const [agreedToTerms, setAgreedToTerms] = useState(false);
 
@@ -43,7 +49,7 @@ function AuthPage() {
     const { data: session } = await supabase.auth.getSession();
     const uid = session.session?.user.id;
     if (!uid) {
-      setStep("email");
+      setStep("form");
       return;
     }
     const { data: profile } = await supabase
@@ -58,7 +64,7 @@ function AuthPage() {
     (async () => {
       const { data } = await supabase.auth.getSession();
       if (!data.session) {
-        setStep("email");
+        setStep("form");
         return;
       }
       const status = await checkPin();
@@ -97,6 +103,62 @@ function AuthPage() {
       return;
     }
     setStep("sent");
+  }
+
+  async function handleLogin(e: React.FormEvent) {
+    e.preventDefault();
+    if (!isValidBguEmail(email)) {
+      toast.error(`Please use your university email ending in ${BGU_DOMAIN}`);
+      return;
+    }
+    if (loginPin.length !== 4) {
+      toast.error("Enter your 4-digit PIN");
+      return;
+    }
+    setBusy(true);
+    try {
+      const res = await doLogin({ data: { email: email.trim().toLowerCase(), pin: loginPin } });
+      if (res.status === "not_found") {
+        toast.error("No account found for this email — please sign up.");
+        setMode("signup");
+        setLoginPin("");
+        return;
+      }
+      if (res.status === "no_pin") {
+        toast.error("Finish signing up to set your PIN first.");
+        setMode("signup");
+        setLoginPin("");
+        return;
+      }
+      if (res.status === "locked") {
+        toast.error(`Too many attempts. Try again in ${res.minutes} minute${res.minutes === 1 ? "" : "s"}.`);
+        setLoginPin("");
+        return;
+      }
+      if (res.status === "invalid") {
+        toast.error(`Incorrect PIN. ${res.remaining} attempt${res.remaining === 1 ? "" : "s"} left.`);
+        setLoginPin("");
+        return;
+      }
+      // status === "ok"
+      const { error } = await supabase.auth.verifyOtp({
+        type: "magiclink",
+        token_hash: res.tokenHash,
+      });
+      if (error) {
+        toast.error("Could not sign you in. Please try again.");
+        setLoginPin("");
+        return;
+      }
+      sessionStorage.setItem("sb_unlocked", "true");
+      toast.success("Welcome back! 🎉");
+      await routeOnward();
+    } catch {
+      toast.error("Something went wrong. Please try again.");
+      setLoginPin("");
+    } finally {
+      setBusy(false);
+    }
   }
 
   async function handleSetPin() {
@@ -143,11 +205,11 @@ function AuthPage() {
     sessionStorage.removeItem("sb_unlocked");
     setPinState("");
     setConfirmPin("");
-    setStep("email");
+    setStep("form");
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-background px-4 py-10">
+    <div className="flex min-h-screen flex-col items-center justify-center bg-background px-4 py-10">
       <div className="w-full max-w-md">
         <div className="mb-6 flex flex-col items-center text-center">
           <span className="flex h-12 w-12 items-center justify-center rounded-2xl bg-primary text-primary-foreground shadow-md">
@@ -166,58 +228,135 @@ function AuthPage() {
             </div>
           )}
 
-          {step === "email" && (
-            <form onSubmit={handleSendLink} className="space-y-4">
-              <div className="space-y-1.5 text-center">
-                <h2 className="font-display text-xl font-semibold">Welcome 👋</h2>
-                <p className="text-sm text-muted-foreground">
-                  Sign in with your BGU email. We'll send you a secure magic link.
-                </p>
+          {step === "form" && (
+            <div className="space-y-5">
+              <div
+                role="tablist"
+                aria-label="Choose login or sign up"
+                className="grid grid-cols-2 gap-1 rounded-xl bg-secondary p-1"
+              >
+                <button
+                  type="button"
+                  role="tab"
+                  aria-selected={mode === "login"}
+                  onClick={() => setMode("login")}
+                  className={cn(
+                    "rounded-lg px-3 py-2 text-sm font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+                    mode === "login" ? "bg-card text-foreground shadow-sm" : "text-muted-foreground",
+                  )}
+                >
+                  Log in
+                </button>
+                <button
+                  type="button"
+                  role="tab"
+                  aria-selected={mode === "signup"}
+                  onClick={() => setMode("signup")}
+                  className={cn(
+                    "rounded-lg px-3 py-2 text-sm font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+                    mode === "signup" ? "bg-card text-foreground shadow-sm" : "text-muted-foreground",
+                  )}
+                >
+                  Sign up
+                </button>
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="email">University email</Label>
-                <div className="relative">
-                  <Mail className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                  <Input
-                    id="email"
-                    type="email"
-                    autoComplete="email"
-                    placeholder={`yourname${BGU_DOMAIN}`}
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    className="pl-9"
-                    required
-                  />
-                </div>
-                <p className="text-xs text-muted-foreground">Only {BGU_DOMAIN} emails are allowed.</p>
-              </div>
-              <div className="flex items-start gap-2.5">
-                <Checkbox
-                  id="terms"
-                  checked={agreedToTerms}
-                  onCheckedChange={(checked) => setAgreedToTerms(checked === true)}
-                  className="mt-0.5"
-                />
-                <Label htmlFor="terms" className="text-xs font-normal leading-relaxed text-muted-foreground">
-                  I agree to the{" "}
-                  <Link
-                    to="/terms"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="font-medium text-primary underline underline-offset-2"
-                  >
-                    Terms of Service
-                  </Link>
-                  , including the reports &amp; safety policy.
-                </Label>
-              </div>
-              <Button type="submit" className="w-full" disabled={sending || !agreedToTerms}>
-                {sending ? <Loader2 className="h-4 w-4 animate-spin" /> : "Send magic link"}
-              </Button>
-              <p className="text-center text-xs text-muted-foreground">
-                Google sign-in coming soon.
-              </p>
-            </form>
+
+              {mode === "login" ? (
+                <form onSubmit={handleLogin} className="space-y-4">
+                  <div className="space-y-1.5 text-center">
+                    <h2 className="font-display text-xl font-semibold">Welcome back 👋</h2>
+                    <p className="text-sm text-muted-foreground">
+                      Log in with your BGU email and your 4-digit PIN.
+                    </p>
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="login-email">University email</Label>
+                    <div className="relative">
+                      <Mail className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                      <Input
+                        id="login-email"
+                        type="email"
+                        autoComplete="email"
+                        placeholder={`yourname${BGU_DOMAIN}`}
+                        value={email}
+                        onChange={(e) => setEmail(e.target.value)}
+                        className="pl-9"
+                        required
+                      />
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="login-pin" className="block text-center">
+                      Your PIN
+                    </Label>
+                    <PinPad value={loginPin} onChange={setLoginPin} disabled={busy} />
+                  </div>
+                  <Button type="submit" className="w-full" disabled={busy}>
+                    {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : "Log in"}
+                  </Button>
+                  <p className="text-center text-xs text-muted-foreground">
+                    Forgot your PIN?{" "}
+                    <button
+                      type="button"
+                      onClick={() => setMode("signup")}
+                      className="font-medium text-primary underline underline-offset-2"
+                    >
+                      Sign in by email
+                    </button>
+                  </p>
+                </form>
+              ) : (
+                <form onSubmit={handleSendLink} className="space-y-4">
+                  <div className="space-y-1.5 text-center">
+                    <h2 className="font-display text-xl font-semibold">Create your account</h2>
+                    <p className="text-sm text-muted-foreground">
+                      Sign up with your BGU email. We'll send you a secure magic link, then you'll pick a PIN.
+                    </p>
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="email">University email</Label>
+                    <div className="relative">
+                      <Mail className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                      <Input
+                        id="email"
+                        type="email"
+                        autoComplete="email"
+                        placeholder={`yourname${BGU_DOMAIN}`}
+                        value={email}
+                        onChange={(e) => setEmail(e.target.value)}
+                        className="pl-9"
+                        required
+                      />
+                    </div>
+                    <p className="text-xs text-muted-foreground">Only {BGU_DOMAIN} emails are allowed.</p>
+                  </div>
+                  <div className="flex items-start gap-2.5">
+                    <Checkbox
+                      id="terms"
+                      checked={agreedToTerms}
+                      onCheckedChange={(checked) => setAgreedToTerms(checked === true)}
+                      className="mt-0.5"
+                    />
+                    <Label htmlFor="terms" className="text-xs font-normal leading-relaxed text-muted-foreground">
+                      I agree to the{" "}
+                      <Link
+                        to="/terms"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="font-medium text-primary underline underline-offset-2"
+                      >
+                        Terms of Service
+                      </Link>
+                      , including the reports &amp; safety policy.
+                    </Label>
+                  </div>
+                  <Button type="submit" className="w-full" disabled={sending || !agreedToTerms}>
+                    {sending ? <Loader2 className="h-4 w-4 animate-spin" /> : "Send magic link"}
+                  </Button>
+                  <p className="text-center text-xs text-muted-foreground">Google sign-in coming soon.</p>
+                </form>
+              )}
+            </div>
           )}
 
           {step === "sent" && (
@@ -230,7 +369,7 @@ function AuthPage() {
                 We sent a magic link to <span className="font-medium text-foreground">{email}</span>. Click it
                 to sign in — you can keep this tab open.
               </p>
-              <Button variant="ghost" className="w-full" onClick={() => setStep("email")}>
+              <Button variant="ghost" className="w-full" onClick={() => setStep("form")}>
                 <ArrowLeft className="mr-2 h-4 w-4" /> Use a different email
               </Button>
             </div>
@@ -242,10 +381,10 @@ function AuthPage() {
                 <ShieldCheck className="h-7 w-7" />
               </div>
               <div className="space-y-1.5">
-                <h2 className="font-display text-xl font-semibold">Create a quick-login PIN</h2>
+                <h2 className="font-display text-xl font-semibold">Create a login PIN</h2>
                 <p className="text-sm text-muted-foreground">
                   {confirmPin.length === 0 && pin.length < 4
-                    ? "Pick a 4-digit PIN for faster sign-ins on this device."
+                    ? "Pick a 4-digit PIN — you'll use it to log in next time."
                     : "Re-enter your PIN to confirm."}
                 </p>
               </div>
@@ -293,6 +432,8 @@ function AuthPage() {
             </div>
           )}
         </Card>
+
+        <LegalFooter />
       </div>
     </div>
   );
