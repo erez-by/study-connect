@@ -288,6 +288,7 @@ function Dashboard() {
           open={plannerOpen}
           onOpenChange={setPlannerOpen}
           userId={userId}
+          initialDate={viewDate}
         />
       )}
 
