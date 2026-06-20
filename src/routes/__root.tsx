@@ -94,6 +94,12 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
+      { name: "twitter:title", content: "Study Buddy — Find your study partner at BGU" },
+      { name: "description", content: "Study Connect is a university-specific web app for finding study partners and coordinating sessions." },
+      { property: "og:description", content: "Study Connect is a university-specific web app for finding study partners and coordinating sessions." },
+      { name: "twitter:description", content: "Study Connect is a university-specific web app for finding study partners and coordinating sessions." },
+      { property: "og:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/890f3ff0-b3b9-4fcc-91b1-fa2803af854a/id-preview-04c16802--862a5092-c2c4-44cf-ba04-2d4376af9ebc.lovable.app-1781966058198.png" },
+      { name: "twitter:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/890f3ff0-b3b9-4fcc-91b1-fa2803af854a/id-preview-04c16802--862a5092-c2c4-44cf-ba04-2d4376af9ebc.lovable.app-1781966058198.png" },
     ],
     links: [
       { rel: "stylesheet", href: appCss },
