@@ -71,6 +71,8 @@ function ChatThread() {
   const [blockOpen, setBlockOpen] = useState(false);
   const [reportOpen, setReportOpen] = useState(false);
   const [reportReason, setReportReason] = useState("");
+  const [confirming, setConfirming] = useState(false);
+  const [rateOpen, setRateOpen] = useState(false);
 
   const other = useQuery({
     queryKey: ["chat-profile", otherId],
