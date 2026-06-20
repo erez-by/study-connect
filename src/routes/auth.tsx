@@ -76,8 +76,7 @@ function AuthPage() {
         setStep("pin-setup");
         return;
       }
-      const unlocked = sessionStorage.getItem("sb_unlocked") === "true";
-      if (unlocked) {
+      if (isUnlocked()) {
         await routeOnward();
         return;
       }
