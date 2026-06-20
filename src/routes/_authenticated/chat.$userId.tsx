@@ -382,6 +382,16 @@ function ChatThread() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {me && meetup.data?.mutual && (
+        <RatingDialog
+          open={rateOpen}
+          onOpenChange={setRateOpen}
+          reviewerId={me}
+          reviewedUserId={otherId}
+          reviewedName={other.data?.first_name ?? "your study buddy"}
+        />
+      )}
     </div>
   );
 }
