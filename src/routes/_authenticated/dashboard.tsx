@@ -1,11 +1,20 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Search, CalendarPlus, Users, CheckCircle2, Filter } from "lucide-react";
+import {
+  Search,
+  CalendarPlus,
+  Users,
+  CheckCircle2,
+  Filter,
+  ChevronLeft,
+  ChevronRight,
+} from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useSession } from "@/hooks/useSession";
-import { todayStr, type Availability, type Profile } from "@/lib/db";
+import { upcomingDays, formatDateLabel, type Availability, type Profile } from "@/lib/db";
 import { STUDY_STYLES } from "@/lib/constants";
+import { getMeetupState } from "@/lib/meetup";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
