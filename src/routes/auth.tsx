@@ -376,6 +376,21 @@ function AuthPage() {
                       , including the reports &amp; safety policy.
                     </Label>
                   </div>
+                  <div className="flex items-start gap-2.5">
+                    <Checkbox
+                      id="marketing"
+                      checked={marketingOptIn}
+                      onCheckedChange={(checked) => setMarketingOptIn(checked === true)}
+                      className="mt-0.5"
+                    />
+                    <Label
+                      htmlFor="marketing"
+                      className="text-xs font-normal leading-relaxed text-muted-foreground"
+                    >
+                      I'd like to receive occasional updates and tips by email (optional). You can
+                      unsubscribe anytime.
+                    </Label>
+                  </div>
                   <Button type="submit" className="w-full" disabled={sending || !agreedToTerms}>
                     {sending ? <Loader2 className="h-4 w-4 animate-spin" /> : "Send magic link"}
                   </Button>
