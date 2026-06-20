@@ -1,10 +1,14 @@
-import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { useEffect } from "react";
+import { createFileRoute, Link, redirect } from "@tanstack/react-router";
 import { GraduationCap, Users, CalendarClock, Star, MessageCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { useSession } from "@/hooks/useSession";
+import { supabase } from "@/integrations/supabase/client";
 
 export const Route = createFileRoute("/")({
+  ssr: false,
+  beforeLoad: async () => {
+    const { data } = await supabase.auth.getUser();
+    if (data.user) throw redirect({ to: "/dashboard" });
+  },
   head: () => ({
     meta: [
       { title: "Study Buddy — Find your study partner at BGU" },
@@ -19,13 +23,6 @@ export const Route = createFileRoute("/")({
 });
 
 function Landing() {
-  const { user, loading } = useSession();
-  const navigate = useNavigate();
-
-  useEffect(() => {
-    if (!loading && user) navigate({ to: "/dashboard" });
-  }, [user, loading, navigate]);
-
   return (
     <div className="min-h-screen bg-background">
       <header className="mx-auto flex h-16 max-w-6xl items-center justify-between px-4">
