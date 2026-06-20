@@ -228,7 +228,7 @@ function AuthPage() {
 
   async function handleUseDifferentEmail() {
     await supabase.auth.signOut();
-    sessionStorage.removeItem("sb_unlocked");
+    clearUnlocked();
     setPinState("");
     setConfirmPin("");
     setStep("form");
