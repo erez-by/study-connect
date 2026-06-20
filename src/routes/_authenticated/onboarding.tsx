@@ -142,22 +142,30 @@ function Onboarding() {
       .from("profiles")
       .update({
         first_name: data.first_name,
-        last_name: data.last_name,
         last_initial: lastInitial,
-        gender: data.gender,
         degree: data.degree,
         year_of_study: data.year_of_study,
         bio: data.bio,
         avatar_url: avatarUrl,
-        email: user.email,
-        marketing_opt_in: marketingOptIn,
         profile_completed: true,
-        accepted_terms_at: new Date().toISOString(),
       })
       .eq("id", user.id);
+
+    let privateError = error;
+    if (!privateError) {
+      const res = await supabase.from("profiles_private").upsert({
+        id: user.id,
+        last_name: data.last_name,
+        gender: data.gender,
+        email: user.email,
+        marketing_opt_in: marketingOptIn,
+        accepted_terms_at: new Date().toISOString(),
+      });
+      privateError = res.error;
+    }
     setSaving(false);
-    if (error) {
-      toast.error(error.message);
+    if (privateError) {
+      toast.error(privateError.message);
       return;
     }
     queryClient.invalidateQueries();
