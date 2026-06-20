@@ -33,6 +33,7 @@ function AuthenticatedLayout() {
   return (
     <div className="min-h-screen bg-background">
       <AppHeader />
+      <MessageNotifier />
       <Outlet />
     </div>
   );
