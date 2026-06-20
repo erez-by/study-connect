@@ -289,6 +289,38 @@ function ChatThread() {
         <div ref={bottomRef} />
       </div>
 
+      {!isBlocked && meetup.data && (
+        <div className="border-t border-border py-3">
+          {meetup.data.mutual ? (
+            <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl bg-secondary/60 px-3 py-2.5">
+              <span className="flex items-center gap-2 text-sm font-medium">
+                <CheckCircle2 className="h-4 w-4 text-primary" /> You both confirmed you met up!
+              </span>
+              <Button size="sm" className="gap-1.5" onClick={() => setRateOpen(true)}>
+                <Star className="h-4 w-4" /> Rate {other.data?.first_name ?? "them"}
+              </Button>
+            </div>
+          ) : meetup.data.iConfirmed ? (
+            <p className="rounded-xl bg-secondary/60 px-3 py-2.5 text-center text-sm text-muted-foreground">
+              Waiting for {other.data?.first_name ?? "them"} to confirm the meetup before you can rate.
+            </p>
+          ) : (
+            <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl bg-secondary/60 px-3 py-2.5">
+              <span className="text-sm text-muted-foreground">
+                {meetup.data.theyConfirmed
+                  ? `${other.data?.first_name ?? "They"} confirmed you met — confirm too to unlock rating.`
+                  : "Met up in person? Confirm to unlock rating."}
+              </span>
+              <Button size="sm" variant="secondary" className="gap-1.5" onClick={handleConfirmMeetup} disabled={confirming}>
+                {confirming ? <Loader2 className="h-4 w-4 animate-spin" /> : <Handshake className="h-4 w-4" />}
+                Confirm meetup
+              </Button>
+            </div>
+          )}
+        </div>
+      )}
+
+
       {isBlocked ? (
         <div className="border-t border-border py-4 text-center text-sm text-muted-foreground">
           You blocked this user. <button onClick={handleUnblock} className="font-medium text-primary underline">Unblock</button> to message again.
