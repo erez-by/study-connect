@@ -16,29 +16,24 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { HOUR_BLOCKS, STUDY_STYLES, formatHourBlock } from "@/lib/constants";
-import { todayStr, tomorrowStr, formatDateLabel, type Availability } from "@/lib/db";
+import { todayStr, upcomingDays, formatDateLabel, type Availability } from "@/lib/db";
 import { cn } from "@/lib/utils";
 
 type Props = {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   userId: string;
-  /** Initial day to plan ("today" | "tomorrow"). Defaults to today. */
-  initialDay?: DayKey;
+  /** Initial day (ISO date) to plan. Defaults to today. */
+  initialDate?: string;
   onSaved?: () => void;
 };
 
-type DayKey = "today" | "tomorrow";
+const DAYS = upcomingDays(7);
 
-const DAY_DATES: Record<DayKey, () => string> = {
-  today: todayStr,
-  tomorrow: tomorrowStr,
-};
-
-export function AvailabilityPlanner({ open, onOpenChange, userId, initialDay = "today", onSaved }: Props) {
+export function AvailabilityPlanner({ open, onOpenChange, userId, initialDate, onSaved }: Props) {
   const queryClient = useQueryClient();
   const [step, setStep] = useState<1 | 2>(1);
-  const [day, setDay] = useState<DayKey>(initialDay);
+  const [selectedDate, setSelectedDate] = useState<string>(initialDate ?? todayStr());
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [subject, setSubject] = useState("");
   const [style, setStyle] = useState<string>("");
@@ -48,7 +43,6 @@ export function AvailabilityPlanner({ open, onOpenChange, userId, initialDay = "
   const dragging = useRef(false);
   const dragValue = useRef(false);
 
-  const selectedDate = DAY_DATES[day]();
 
   // Load any existing availability for the selected day.
   const existingQuery = useQuery({
