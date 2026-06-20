@@ -178,13 +178,14 @@ function Dashboard() {
   }
 
   const hasAvailability = !!myAvailability.data;
+  const currentDay = days[dayIndex];
 
   return (
     <main className="mx-auto max-w-6xl px-4 py-6">
       <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="font-display text-2xl font-bold tracking-tight">Today's billboard</h1>
-          <p className="text-sm text-muted-foreground">Students free to study today.</p>
+          <h1 className="font-display text-2xl font-bold tracking-tight">Study billboard</h1>
+          <p className="text-sm text-muted-foreground">Flip through the week to see who's free.</p>
         </div>
         <Button onClick={() => setPlannerOpen(true)} size="lg" className="gap-2">
           <CalendarPlus className="h-4 w-4" />
@@ -192,11 +193,39 @@ function Dashboard() {
         </Button>
       </div>
 
+      {/* Billboard day carousel */}
+      <div className="mb-5 flex items-center justify-between rounded-2xl border border-border bg-card p-2">
+        <Button
+          variant="ghost"
+          size="icon"
+          aria-label="Previous day"
+          disabled={dayIndex === 0}
+          onClick={() => setDayIndex((i) => Math.max(0, i - 1))}
+        >
+          <ChevronLeft className="h-5 w-5" />
+        </Button>
+        <div className="text-center">
+          <p className="font-display text-base font-semibold leading-tight">
+            {currentDay.isToday ? "Today" : currentDay.weekday}
+          </p>
+          <p className="text-xs text-muted-foreground">{formatDateLabel(currentDay.iso)}</p>
+        </div>
+        <Button
+          variant="ghost"
+          size="icon"
+          aria-label="Next day"
+          disabled={dayIndex === days.length - 1}
+          onClick={() => setDayIndex((i) => Math.min(days.length - 1, i + 1))}
+        >
+          <ChevronRight className="h-5 w-5" />
+        </Button>
+      </div>
+
       {hasAvailability && (
         <Card className="mb-5 flex items-center gap-3 border-primary/30 bg-secondary/60 p-4">
           <CheckCircle2 className="h-5 w-5 shrink-0 text-primary" />
           <p className="text-sm">
-            You're on the billboard today with{" "}
+            You're on the billboard {currentDay.isToday ? "today" : `for ${currentDay.weekday}`} with{" "}
             <span className="font-semibold">{myAvailability.data?.available_hours?.length ?? 0} free hours</span>. Nice!
           </p>
         </Card>
