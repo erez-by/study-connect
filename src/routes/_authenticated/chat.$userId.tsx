@@ -246,23 +246,38 @@ function ChatThread() {
             <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
           </div>
         ) : messages.data?.length ? (
-          messages.data.map((m) => {
+          messages.data.map((m, i) => {
             const mine = m.sender_id === me;
+            // Inject a relaxed study tip after every TIP_EVERY messages.
+            const showTip = (i + 1) % TIP_EVERY === 0;
             return (
-              <div key={m.id} className={cn("flex", mine ? "justify-end" : "justify-start")}>
-                <div
-                  className={cn(
-                    "max-w-[75%] rounded-2xl px-3.5 py-2 text-sm",
-                    mine
-                      ? "rounded-br-sm bg-primary text-primary-foreground"
-                      : "rounded-bl-sm bg-secondary text-secondary-foreground",
-                  )}
-                >
-                  <p className="whitespace-pre-wrap break-words">{m.content}</p>
-                  <span className={cn("mt-0.5 block text-[10px]", mine ? "text-primary-foreground/70" : "text-muted-foreground")}>
-                    {new Date(m.created_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
-                  </span>
+              <div key={m.id}>
+                <div className={cn("flex", mine ? "justify-end" : "justify-start")}>
+                  <div
+                    className={cn(
+                      "max-w-[75%] rounded-2xl px-3.5 py-2 text-sm",
+                      mine
+                        ? "rounded-br-sm bg-primary text-primary-foreground"
+                        : "rounded-bl-sm bg-secondary text-secondary-foreground",
+                    )}
+                  >
+                    <p className="whitespace-pre-wrap break-words">{m.content}</p>
+                    <span className={cn("mt-0.5 block text-[10px]", mine ? "text-primary-foreground/70" : "text-muted-foreground")}>
+                      {new Date(m.created_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                    </span>
+                  </div>
                 </div>
+                {showTip && (
+                  <div className="my-3 flex justify-center">
+                    <div className="flex max-w-[85%] items-start gap-2 rounded-2xl border border-gold/30 bg-gold/10 px-3.5 py-2.5 text-sm">
+                      <Sparkles className="mt-0.5 h-4 w-4 shrink-0 text-gold" />
+                      <p className="leading-snug text-foreground/90">
+                        <span className="font-semibold">Study tip: </span>
+                        {getStudyTip(Math.floor((i + 1) / TIP_EVERY) - 1)}
+                      </p>
+                    </div>
+                  </div>
+                )}
               </div>
             );
           })
