@@ -36,7 +36,9 @@ function startOfTodayISO() {
 function Dashboard() {
   const { user } = useSession();
   const userId = user?.id;
-  const today = todayStr();
+  const days = useMemo(() => upcomingDays(7), []);
+  const [dayIndex, setDayIndex] = useState(0);
+  const viewDate = days[dayIndex].iso;
 
   const [search, setSearch] = useState("");
   const [styles, setStyles] = useState<Set<string>>(new Set());
@@ -44,14 +46,14 @@ function Dashboard() {
   const [ratingTarget, setRatingTarget] = useState<{ id: string; name: string } | null>(null);
 
   const myAvailability = useQuery({
-    queryKey: ["my-availability", userId, today],
+    queryKey: ["my-availability", userId, viewDate],
     enabled: !!userId,
     queryFn: async (): Promise<Availability | null> => {
       const { data } = await supabase
         .from("daily_availability")
         .select("*")
         .eq("user_id", userId!)
-        .eq("date", today)
+        .eq("date", viewDate)
         .maybeSingle();
       return data;
     },
