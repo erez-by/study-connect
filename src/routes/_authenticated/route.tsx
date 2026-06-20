@@ -18,7 +18,7 @@ function AuthenticatedLayout() {
   const [unlocked, setUnlocked] = useState<boolean | null>(null);
 
   useEffect(() => {
-    const ok = sessionStorage.getItem("sb_unlocked") === "true";
+    const ok = isUnlocked();
     if (!ok) {
       navigate({ to: "/auth", replace: true });
       return;
