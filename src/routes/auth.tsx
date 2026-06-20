@@ -13,7 +13,10 @@ import { PinPad } from "@/components/PinPad";
 import { LegalFooter } from "@/components/LegalFooter";
 import { BGU_DOMAIN, isValidBguEmail } from "@/lib/constants";
 import { getPinStatus, setPin, verifyPin, loginWithPin } from "@/lib/pin.functions";
+import { setUnlocked, isUnlocked, clearUnlocked } from "@/lib/unlock";
 import { cn } from "@/lib/utils";
+
+const MARKETING_KEY = "sb_marketing_opt_in";
 
 export const Route = createFileRoute("/auth")({
   head: () => ({
