@@ -96,6 +96,12 @@ function AuthPage() {
       return;
     }
     setSending(true);
+    // Remember the marketing choice so it can be saved once the account exists.
+    try {
+      localStorage.setItem(MARKETING_KEY, marketingOptIn ? "true" : "false");
+    } catch {
+      // ignore
+    }
     const { error } = await supabase.auth.signInWithOtp({
       email: email.trim().toLowerCase(),
       options: { emailRedirectTo: `${window.location.origin}/auth` },
