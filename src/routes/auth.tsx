@@ -188,9 +188,8 @@ function AuthPage() {
           const uid = session.session?.user.id;
           if (uid) {
             await supabase
-              .from("profiles")
-              .update({ marketing_opt_in: choice === "true" })
-              .eq("id", uid);
+              .from("profiles_private")
+              .upsert({ id: uid, marketing_opt_in: choice === "true" });
           }
           localStorage.removeItem(MARKETING_KEY);
         }
