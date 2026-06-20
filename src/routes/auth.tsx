@@ -159,7 +159,7 @@ function AuthPage() {
         setLoginPin("");
         return;
       }
-      sessionStorage.setItem("sb_unlocked", "true");
+      setUnlocked();
       toast.success("Welcome back! 🎉");
       await routeOnward();
     } catch {
