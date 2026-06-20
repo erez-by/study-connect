@@ -212,7 +212,7 @@ function AuthPage() {
     try {
       const res = await checkPinValue({ data: { pin: value } });
       if (res.valid) {
-        sessionStorage.setItem("sb_unlocked", "true");
+        setUnlocked();
         await routeOnward();
       } else {
         toast.error("Incorrect PIN");
