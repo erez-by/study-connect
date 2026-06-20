@@ -16,29 +16,24 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { HOUR_BLOCKS, STUDY_STYLES, formatHourBlock } from "@/lib/constants";
-import { todayStr, tomorrowStr, formatDateLabel, type Availability } from "@/lib/db";
+import { todayStr, upcomingDays, formatDateLabel, type Availability } from "@/lib/db";
 import { cn } from "@/lib/utils";
 
 type Props = {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   userId: string;
-  /** Initial day to plan ("today" | "tomorrow"). Defaults to today. */
-  initialDay?: DayKey;
+  /** Initial day (ISO date) to plan. Defaults to today. */
+  initialDate?: string;
   onSaved?: () => void;
 };
 
-type DayKey = "today" | "tomorrow";
+const DAYS = upcomingDays(7);
 
-const DAY_DATES: Record<DayKey, () => string> = {
-  today: todayStr,
-  tomorrow: tomorrowStr,
-};
-
-export function AvailabilityPlanner({ open, onOpenChange, userId, initialDay = "today", onSaved }: Props) {
+export function AvailabilityPlanner({ open, onOpenChange, userId, initialDate, onSaved }: Props) {
   const queryClient = useQueryClient();
   const [step, setStep] = useState<1 | 2>(1);
-  const [day, setDay] = useState<DayKey>(initialDay);
+  const [selectedDate, setSelectedDate] = useState<string>(initialDate ?? todayStr());
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [subject, setSubject] = useState("");
   const [style, setStyle] = useState<string>("");
@@ -48,7 +43,6 @@ export function AvailabilityPlanner({ open, onOpenChange, userId, initialDay = "
   const dragging = useRef(false);
   const dragValue = useRef(false);
 
-  const selectedDate = DAY_DATES[day]();
 
   // Load any existing availability for the selected day.
   const existingQuery = useQuery({
@@ -69,8 +63,8 @@ export function AvailabilityPlanner({ open, onOpenChange, userId, initialDay = "
   useEffect(() => {
     if (!open) return;
     setStep(1);
-    setDay(initialDay);
-  }, [open, initialDay]);
+    setSelectedDate(initialDate ?? todayStr());
+  }, [open, initialDate]);
 
   // Sync form fields whenever the loaded availability (per day) changes.
   useEffect(() => {
@@ -144,9 +138,7 @@ export function AvailabilityPlanner({ open, onOpenChange, userId, initialDay = "
       return;
     }
     queryClient.invalidateQueries();
-    toast.success(
-      day === "today" ? "Availability posted for today! 🎯" : "Availability posted for tomorrow! 🎯",
-    );
+    toast.success(`Availability posted for ${formatDateLabel(selectedDate)}! 🎯`);
     onSaved?.();
     onOpenChange(false);
   }
@@ -170,22 +162,28 @@ export function AvailabilityPlanner({ open, onOpenChange, userId, initialDay = "
           <div className="space-y-4 px-5 py-4">
             {step === 1 && (
               <>
-                <div className="grid grid-cols-2 gap-1 rounded-xl bg-secondary p-1" role="group" aria-label="Pick a day">
-                  {(["today", "tomorrow"] as DayKey[]).map((d) => (
-                    <button
-                      key={d}
-                      type="button"
-                      aria-pressed={day === d}
-                      onClick={() => setDay(d)}
-                      className={cn(
-                        "rounded-lg px-3 py-2 text-sm font-semibold capitalize transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
-                        day === d ? "bg-card text-foreground shadow-sm" : "text-muted-foreground",
-                      )}
-                    >
-                      {d}
-                    </button>
-                  ))}
+                <div className="flex gap-1.5 overflow-x-auto pb-1" role="group" aria-label="Pick a day">
+                  {DAYS.map((d) => {
+                    const active = selectedDate === d.iso;
+                    return (
+                      <button
+                        key={d.iso}
+                        type="button"
+                        aria-pressed={active}
+                        onClick={() => setSelectedDate(d.iso)}
+                        className={cn(
+                          "flex shrink-0 flex-col items-center rounded-xl border-2 px-3 py-2 text-sm font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+                          active
+                            ? "border-primary bg-secondary text-foreground"
+                            : "border-border text-muted-foreground hover:border-primary/40",
+                        )}
+                      >
+                        <span className="leading-tight">{d.isToday ? "Today" : d.short}</span>
+                      </button>
+                    );
+                  })}
                 </div>
+
 
                 <div className="select-none rounded-xl border border-border p-1.5" style={{ touchAction: "none" }}>
                   {HOUR_BLOCKS.map((block) => {

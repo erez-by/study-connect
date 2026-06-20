@@ -9,6 +9,10 @@ import {
   Flag,
   Loader2,
   ShieldOff,
+  Handshake,
+  Star,
+  Sparkles,
+  CheckCircle2,
 } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
@@ -42,7 +46,13 @@ import {
   DialogDescription,
   DialogFooter,
 } from "@/components/ui/dialog";
+import { RatingDialog } from "@/components/RatingDialog";
+import { getMeetupState, confirmMeetup } from "@/lib/meetup";
+import { getStudyTip } from "@/lib/constants";
 import { cn } from "@/lib/utils";
+
+/** After this many messages in the thread, inject a friendly study tip. */
+const TIP_EVERY = 6;
 
 export const Route = createFileRoute("/_authenticated/chat/$userId")({
   component: ChatThread,
@@ -61,6 +71,8 @@ function ChatThread() {
   const [blockOpen, setBlockOpen] = useState(false);
   const [reportOpen, setReportOpen] = useState(false);
   const [reportReason, setReportReason] = useState("");
+  const [confirming, setConfirming] = useState(false);
+  const [rateOpen, setRateOpen] = useState(false);
 
   const other = useQuery({
     queryKey: ["chat-profile", otherId],
@@ -100,9 +112,30 @@ function ChatThread() {
     },
   });
 
+  const meetup = useQuery({
+    queryKey: ["meetup", me, otherId],
+    enabled: !!me,
+    refetchInterval: 8000,
+    queryFn: () => getMeetupState(me!, otherId),
+  });
+
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages.data?.length]);
+
+  async function handleConfirmMeetup() {
+    if (!me) return;
+    setConfirming(true);
+    try {
+      await confirmMeetup(me, otherId);
+      toast.success("Meetup confirmed! 🤝");
+      meetup.refetch();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Could not confirm meetup");
+    } finally {
+      setConfirming(false);
+    }
+  }
 
   async function send(e: React.FormEvent) {
     e.preventDefault();
@@ -213,23 +246,38 @@ function ChatThread() {
             <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
           </div>
         ) : messages.data?.length ? (
-          messages.data.map((m) => {
+          messages.data.map((m, i) => {
             const mine = m.sender_id === me;
+            // Inject a relaxed study tip after every TIP_EVERY messages.
+            const showTip = (i + 1) % TIP_EVERY === 0;
             return (
-              <div key={m.id} className={cn("flex", mine ? "justify-end" : "justify-start")}>
-                <div
-                  className={cn(
-                    "max-w-[75%] rounded-2xl px-3.5 py-2 text-sm",
-                    mine
-                      ? "rounded-br-sm bg-primary text-primary-foreground"
-                      : "rounded-bl-sm bg-secondary text-secondary-foreground",
-                  )}
-                >
-                  <p className="whitespace-pre-wrap break-words">{m.content}</p>
-                  <span className={cn("mt-0.5 block text-[10px]", mine ? "text-primary-foreground/70" : "text-muted-foreground")}>
-                    {new Date(m.created_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
-                  </span>
+              <div key={m.id}>
+                <div className={cn("flex", mine ? "justify-end" : "justify-start")}>
+                  <div
+                    className={cn(
+                      "max-w-[75%] rounded-2xl px-3.5 py-2 text-sm",
+                      mine
+                        ? "rounded-br-sm bg-primary text-primary-foreground"
+                        : "rounded-bl-sm bg-secondary text-secondary-foreground",
+                    )}
+                  >
+                    <p className="whitespace-pre-wrap break-words">{m.content}</p>
+                    <span className={cn("mt-0.5 block text-[10px]", mine ? "text-primary-foreground/70" : "text-muted-foreground")}>
+                      {new Date(m.created_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                    </span>
+                  </div>
                 </div>
+                {showTip && (
+                  <div className="my-3 flex justify-center">
+                    <div className="flex max-w-[85%] items-start gap-2 rounded-2xl border border-gold/30 bg-gold/10 px-3.5 py-2.5 text-sm">
+                      <Sparkles className="mt-0.5 h-4 w-4 shrink-0 text-gold" />
+                      <p className="leading-snug text-foreground/90">
+                        <span className="font-semibold">Study tip: </span>
+                        {getStudyTip(Math.floor((i + 1) / TIP_EVERY) - 1)}
+                      </p>
+                    </div>
+                  </div>
+                )}
               </div>
             );
           })
@@ -240,6 +288,38 @@ function ChatThread() {
         )}
         <div ref={bottomRef} />
       </div>
+
+      {!isBlocked && meetup.data && (
+        <div className="border-t border-border py-3">
+          {meetup.data.mutual ? (
+            <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl bg-secondary/60 px-3 py-2.5">
+              <span className="flex items-center gap-2 text-sm font-medium">
+                <CheckCircle2 className="h-4 w-4 text-primary" /> You both confirmed you met up!
+              </span>
+              <Button size="sm" className="gap-1.5" onClick={() => setRateOpen(true)}>
+                <Star className="h-4 w-4" /> Rate {other.data?.first_name ?? "them"}
+              </Button>
+            </div>
+          ) : meetup.data.iConfirmed ? (
+            <p className="rounded-xl bg-secondary/60 px-3 py-2.5 text-center text-sm text-muted-foreground">
+              Waiting for {other.data?.first_name ?? "them"} to confirm the meetup before you can rate.
+            </p>
+          ) : (
+            <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl bg-secondary/60 px-3 py-2.5">
+              <span className="text-sm text-muted-foreground">
+                {meetup.data.theyConfirmed
+                  ? `${other.data?.first_name ?? "They"} confirmed you met — confirm too to unlock rating.`
+                  : "Met up in person? Confirm to unlock rating."}
+              </span>
+              <Button size="sm" variant="secondary" className="gap-1.5" onClick={handleConfirmMeetup} disabled={confirming}>
+                {confirming ? <Loader2 className="h-4 w-4 animate-spin" /> : <Handshake className="h-4 w-4" />}
+                Confirm meetup
+              </Button>
+            </div>
+          )}
+        </div>
+      )}
+
 
       {isBlocked ? (
         <div className="border-t border-border py-4 text-center text-sm text-muted-foreground">
@@ -302,6 +382,16 @@ function ChatThread() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {me && meetup.data?.mutual && (
+        <RatingDialog
+          open={rateOpen}
+          onOpenChange={setRateOpen}
+          reviewerId={me}
+          reviewedUserId={otherId}
+          reviewedName={other.data?.first_name ?? "your study buddy"}
+        />
+      )}
     </div>
   );
 }

@@ -1,0 +1,1 @@
+REVOKE EXECUTE ON FUNCTION public.is_meetup_mutual(uuid, uuid) FROM PUBLIC, anon, authenticated;

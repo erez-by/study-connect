@@ -1,11 +1,20 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Search, CalendarPlus, Users, CheckCircle2, Filter } from "lucide-react";
+import {
+  Search,
+  CalendarPlus,
+  Users,
+  CheckCircle2,
+  Filter,
+  ChevronLeft,
+  ChevronRight,
+} from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useSession } from "@/hooks/useSession";
-import { todayStr, type Availability, type Profile } from "@/lib/db";
+import { upcomingDays, formatDateLabel, type Availability, type Profile } from "@/lib/db";
 import { STUDY_STYLES } from "@/lib/constants";
+import { getMeetupState } from "@/lib/meetup";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -27,7 +36,9 @@ function startOfTodayISO() {
 function Dashboard() {
   const { user } = useSession();
   const userId = user?.id;
-  const today = todayStr();
+  const days = useMemo(() => upcomingDays(7), []);
+  const [dayIndex, setDayIndex] = useState(0);
+  const viewDate = days[dayIndex].iso;
 
   const [search, setSearch] = useState("");
   const [styles, setStyles] = useState<Set<string>>(new Set());
@@ -35,14 +46,14 @@ function Dashboard() {
   const [ratingTarget, setRatingTarget] = useState<{ id: string; name: string } | null>(null);
 
   const myAvailability = useQuery({
-    queryKey: ["my-availability", userId, today],
+    queryKey: ["my-availability", userId, viewDate],
     enabled: !!userId,
     queryFn: async (): Promise<Availability | null> => {
       const { data } = await supabase
         .from("daily_availability")
         .select("*")
         .eq("user_id", userId!)
-        .eq("date", today)
+        .eq("date", viewDate)
         .maybeSingle();
       return data;
     },
@@ -58,13 +69,13 @@ function Dashboard() {
   });
 
   const students = useQuery({
-    queryKey: ["available", today],
+    queryKey: ["available", viewDate],
     enabled: !!userId,
     queryFn: async (): Promise<AvailableStudent[]> => {
       const { data: avails } = await supabase
         .from("daily_availability")
         .select("*")
-        .eq("date", today);
+        .eq("date", viewDate);
       if (!avails?.length) return [];
       const ids = [...new Set(avails.map((a) => a.user_id))];
       const { data: profs } = await supabase
@@ -79,16 +90,17 @@ function Dashboard() {
     },
   });
 
-  // First availability prompt of the day.
+  // First availability prompt of the day (only for today's view).
   useEffect(() => {
+    if (dayIndex !== 0) return;
     if (myAvailability.isSuccess && myAvailability.data === null) {
-      const key = `sb_planner_prompted_${today}`;
+      const key = `sb_planner_prompted_${viewDate}`;
       if (sessionStorage.getItem(key) !== "true") {
         sessionStorage.setItem(key, "true");
         setPlannerOpen(true);
       }
     }
-  }, [myAvailability.isSuccess, myAvailability.data, today]);
+  }, [myAvailability.isSuccess, myAvailability.data, viewDate, dayIndex]);
 
   // Rating prompt: chatted >1h ago today, before 20:00, not yet reviewed.
   useEffect(() => {
@@ -118,7 +130,16 @@ function Dashboard() {
         .in("reviewed_user_id", ids);
       const reviewedSet = new Set((reviewed ?? []).map((r) => r.reviewed_user_id));
       const dismissed = new Set(JSON.parse(sessionStorage.getItem("sb_rating_dismissed") || "[]"));
-      const pick = ids.find((id) => !reviewedSet.has(id) && !dismissed.has(id));
+      const eligible = ids.filter((id) => !reviewedSet.has(id) && !dismissed.has(id));
+      // Only prompt to rate partners with whom the meetup is mutually confirmed.
+      let pick: string | undefined;
+      for (const id of eligible) {
+        const { mutual } = await getMeetupState(userId, id);
+        if (mutual) {
+          pick = id;
+          break;
+        }
+      }
       if (!pick) return;
       const { data: prof } = await supabase
         .from("profiles")
@@ -157,13 +178,14 @@ function Dashboard() {
   }
 
   const hasAvailability = !!myAvailability.data;
+  const currentDay = days[dayIndex];
 
   return (
     <main className="mx-auto max-w-6xl px-4 py-6">
       <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="font-display text-2xl font-bold tracking-tight">Today's billboard</h1>
-          <p className="text-sm text-muted-foreground">Students free to study today.</p>
+          <h1 className="font-display text-2xl font-bold tracking-tight">Study billboard</h1>
+          <p className="text-sm text-muted-foreground">Flip through the week to see who's free.</p>
         </div>
         <Button onClick={() => setPlannerOpen(true)} size="lg" className="gap-2">
           <CalendarPlus className="h-4 w-4" />
@@ -171,11 +193,39 @@ function Dashboard() {
         </Button>
       </div>
 
+      {/* Billboard day carousel */}
+      <div className="mb-5 flex items-center justify-between rounded-2xl border border-border bg-card p-2">
+        <Button
+          variant="ghost"
+          size="icon"
+          aria-label="Previous day"
+          disabled={dayIndex === 0}
+          onClick={() => setDayIndex((i) => Math.max(0, i - 1))}
+        >
+          <ChevronLeft className="h-5 w-5" />
+        </Button>
+        <div className="text-center">
+          <p className="font-display text-base font-semibold leading-tight">
+            {currentDay.isToday ? "Today" : currentDay.weekday}
+          </p>
+          <p className="text-xs text-muted-foreground">{formatDateLabel(currentDay.iso)}</p>
+        </div>
+        <Button
+          variant="ghost"
+          size="icon"
+          aria-label="Next day"
+          disabled={dayIndex === days.length - 1}
+          onClick={() => setDayIndex((i) => Math.min(days.length - 1, i + 1))}
+        >
+          <ChevronRight className="h-5 w-5" />
+        </Button>
+      </div>
+
       {hasAvailability && (
         <Card className="mb-5 flex items-center gap-3 border-primary/30 bg-secondary/60 p-4">
           <CheckCircle2 className="h-5 w-5 shrink-0 text-primary" />
           <p className="text-sm">
-            You're on the billboard today with{" "}
+            You're on the billboard {currentDay.isToday ? "today" : `for ${currentDay.weekday}`} with{" "}
             <span className="font-semibold">{myAvailability.data?.available_hours?.length ?? 0} free hours</span>. Nice!
           </p>
         </Card>
@@ -238,6 +288,7 @@ function Dashboard() {
           open={plannerOpen}
           onOpenChange={setPlannerOpen}
           userId={userId}
+          initialDate={viewDate}
         />
       )}
 
